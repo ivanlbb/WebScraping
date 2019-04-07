@@ -60,10 +60,10 @@ def getResultados(pagina, fromYear = 2006, toYear = 2016,fromPrice = 5000,toPric
     #https://www.milanuncios.com/coches-de-segunda-mano/?fromSearch=1&desde=1000&hasta=2500&demanda=n&anod=2006&anoh=2017
     #url = "https://www.milanuncios.com/coches-de-segunda-mano-en-madrid/?fromSearch=1&demanda=n&anod=2008&anoh=2018"
     url = "https://www.milanuncios.com/coches-de-segunda-mano/?fromSearch=1&demanda=n&anod={0}&anoh={1}desde={2}&hasta={3}".format(fromYear, toYear, fromPrice, toPrice)
-    print (url)
     #url = "https://www.milanuncios.com/coches-de-segunda-mano/?fromSearch=1&demanda=n&anod=2008&anoh=2018&desde=1000&hasta=2500"
     if pagina > 1:
         url = url+"&pagina="+str(pagina)
+    print (url)
         
     #vamos cambiando el user-agent
     headers = {'User-Agent': getUserAgent(),
@@ -88,7 +88,7 @@ from time import sleep
 
 #obtenemos los resultados de las 5 primeras paginas 
 listaCoches=[]
-for i in range (5): 
+for i in range (1,6): 
     #dormimos un numero aleatorio de segundos entre 5 y 10 para prevenir que nos baneen    
     sleep(randint(5,10))
     pagina = getResultados(i, fromYear, toYear, fromPrice, toPrice)
