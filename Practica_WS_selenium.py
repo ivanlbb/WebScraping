@@ -8,6 +8,8 @@ import pandas as pd
 from datetime import datetime
 from datetime import timedelta
 from bs4 import BeautifulSoup
+from selenium import webdriver
+import selenium.webdriver.chrome.service as service
 
 parser = argparse.ArgumentParser(description='Web Scraping de www.milanuncios.com')
 parser.add_argument('paginaDesde', type=int, help="Pagina desde", default=1)
@@ -25,7 +27,6 @@ toYear = parametros.toYear;
 fromPrice = parametros.fromPrice;
 toPrice = parametros.toPrice;
 baseURL = 'www.milanuncios.com'
-
 
 def getFicheroRobots():
     urlRobots = baseURL+'/robots.txt'
@@ -63,7 +64,31 @@ def getUserAgent():
     'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:52.0) Gecko/20100101 Firefox/52.0'
     ]
     return random.choice(user_agent_list)
+
+def getURL(pagina, fromYear = 2006, toYear = 2016,fromPrice = 5000,toPrice = 12000):
+    url = 'https://www.milanuncios.com/coches-de-segunda-mano/?demanda=n&anod={0}&anoh={1}&desde={2}&hasta={3}'.format(fromYear, toYear, fromPrice, toPrice)
+    if pagina > 1:
+        url = url+"&pagina="+str(pagina)       
+    return url
     
+def __ie(url):
+    print(url)
+    driver = webdriver.Ie()    
+    driver.get(url)
+    contenido = driver.page_source
+    sleep(randint(10,20))
+    driver.quit()    
+    return contenido
+    
+def __chrome (url):
+    print(url)
+    driver = webdriver.Chrome()    
+    driver.get(url);
+    contenido = driver.page_source
+    sleep(randint(10,20))
+    driver.quit()    
+    return contenido
+
     
 def getResultados(pagina, fromYear = 2006, toYear = 2016,fromPrice = 5000,toPrice = 12000):
     print ("Pagina "+str(pagina))
@@ -81,9 +106,7 @@ def getResultados(pagina, fromYear = 2006, toYear = 2016,fromPrice = 5000,toPric
     referer = 'https://www.milanuncios.com/coches-de-segunda-mano/'
     #headers2 = {'User-Agent': getUserAgent(),
     user_agent = 'Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:66.0) Gecko/20100101 Firefox/66.0'
-    #Cabeceras.
-    #Con firefox developer edition nos conectamos a la página y obtenemos una cookie que pegamos aqui
-    headers = {'User-Agent': user_agent,
+    headers2 = {'User-Agent': user_agent,
                'referer':referer,
                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",                
                "Accept-Encoding": "gzip, deflate, br",
@@ -93,7 +116,8 @@ def getResultados(pagina, fromYear = 2006, toYear = 2016,fromPrice = 5000,toPric
                "Host": "www.milanuncios.com"}
 
     
-    print (headers)
+    headers = {'User-Agent': user_agent,'referer':referer}
+    print (headers2)
     page = requests.get(url, headers=headers2)
     print (page.text)
     try:
@@ -115,6 +139,21 @@ def guardar_resultados(lista):
     cabeceras = ['Coche','Link', 'Precio', 'Año', 'Kms', 'Combustible', 'Potencia', 'Puertas', 'Cambio', 'Localizacion']
     dataset.columns = cabeceras
     dataset.to_csv(nombreFichero, index = False)    
+
+def __guardaRespuesta(i, pagina):
+    try:
+        fichRespuesta = 'respuesta-'+str(i)+'.html'
+        file = open(fichRespuesta, "wb+")
+        #contenido = page.text.encode('UTF-8')
+        file.write(pagina.encode('UTF-8'))
+        file.flush()
+        file.close()
+    except Exception as e:
+        print (e)
+        pass
+    return 'Respuesta guardada'
+   
+
     
 from random import randint
 from time import sleep
@@ -122,40 +161,49 @@ from time import sleep
 #obtenemos los resultados de las 5 primeras paginas 
 listaCoches=[]
 for i in range (paginaDesde,paginaHasta+1): 
-    pagina = getResultados(i, fromYear, toYear, fromPrice, toPrice)
-    soup = BeautifulSoup(pagina.text,'html.parser')    
+    #pagina = getResultados(i, fromYear, toYear, fromPrice, toPrice)    
+    #pagina = getResultadosSelenium(i, fromYear, toYear, fromPrice, toPrice)
+    url = getURL(i, fromYear, toYear, fromPrice, toPrice)
+    #if i % 2 == 0:
+     #   pagina = __ie(url)
+    #else:
+    pagina = __chrome(url)
+    print(__guardaRespuesta(i, pagina))
+    #soup = BeautifulSoup(pagina.text,'html.parser')
+    soup = BeautifulSoup(pagina,'html.parser')    
     for coches in soup.find_all('div', class_='aditem-detail'):        
             titulo = coches.find(class_="aditem-detail-title")
-            #obtener el href del titulo
-            href = 'www.milanuncios.com'+titulo['href']
-            #localizacion
-            region = coches.find(class_="list-location-region")
-            if region is None:
-                region = 'desconocido'
-            #caracteristicas
-            div1 = coches.find(class_="adlist-tagsbox-inlineblockline")
-            precio = div1.find(class_="aditem-price")
-            year = div1.find(class_="ano tag-mobile")
-            kms = div1.find(class_="kms tag-mobile")
-            diesel = div1.find(class_="die tag-mobile")            
-            if diesel is None:
-                diesel = div1.find(class_="gas tag-mobile")
-            potencia = div1.find(class_="cc tag-mobile")
-            puertas = div1.find(class_="ejes tag-mobile")
-            cambio = div1.find(class_="cmanual tag-mobile")
-            if cambio is None:
-                cambio = div1.find(class_="cauto tag-mobile")
-            
-            try:
-                listaCoches.append((titulo.text,href,precio.text,year.text,kms.text,diesel.text,potencia.text, puertas.text,cambio.text, region.text))
-            except AttributeError:
-                #algun elemento es nulo, seguimos avanzando
-                pass
-    #dormimos un numero aleatorio de segundos entre 5 y 10 para prevenir que nos baneen    
-    dormir =  randint(20,120)   
+            #obtener el href del titulo. Si no lo encontramos, consideramos que no es un vehiculo
+            if titulo['href'] is not None:
+                href = 'www.milanuncios.com'+titulo['href']
+                #localizacion
+                region = coches.find(class_="list-location-region")
+                if region is None:
+                    region = 'desconocido'
+                #caracteristicas
+                div1 = coches.find(class_="adlist-tagsbox-inlineblockline")
+                precio = div1.find(class_="aditem-price")
+                year = div1.find(class_="ano tag-mobile")
+                kms = div1.find(class_="kms tag-mobile")
+                diesel = div1.find(class_="die tag-mobile")              
+                if diesel is None:
+                    diesel = div1.find(class_="gas tag-mobile")
+                potencia = div1.find(class_="cc tag-mobile")
+                puertas = div1.find(class_="ejes tag-mobile")
+                cambio = div1.find(class_="cmanual tag-mobile")
+                if cambio is None:
+                    cambio = div1.find(class_="cauto tag-mobile")
+                
+                try:
+                    listaCoches.append((titulo.text,href,precio.text,year.text,kms.text,diesel.text,potencia.text, puertas.text,cambio.text, region.text))
+                except AttributeError:
+                    #algun elemento es nulo, seguimos avanzando
+                    pass
+    #dormimos un numero aleatorio de segundos entre 20 y 60 para prevenir que nos baneen
+    dormir =  randint(20,60)   
     print ('Durmiendo '+str(dormir))
     sleep(dormir)
- 
+    
 print ("Encontrados: "+str(len(listaCoches)))
 #for i in range(len(listaCoches)):
 #    print(listaCoches[i])
