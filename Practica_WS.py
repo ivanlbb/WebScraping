@@ -94,7 +94,7 @@ def getResultados(pagina, fromYear = 2006, toYear = 2016,fromPrice = 5000,toPric
 
     
     print (headers)
-    page = requests.get(url, headers=headers2)
+    page = requests.get(url, headers=headers)
     print (page.text)
     try:
         fichRespuesta = 'respuesta-'+str(pagina)+'.html'
