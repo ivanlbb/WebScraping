@@ -8,6 +8,9 @@ import pandas as pd
 from datetime import datetime
 from datetime import timedelta
 from bs4 import BeautifulSoup
+from random import randint
+from time import sleep
+
 
 parser = argparse.ArgumentParser(description='Web Scraping de www.milanuncios.com')
 parser.add_argument('paginaDesde', type=int, help="Pagina desde", default=1)
@@ -66,23 +69,24 @@ def getUserAgent():
     
     
 def getResultados(pagina, fromYear = 2006, toYear = 2016,fromPrice = 5000,toPrice = 12000):
-    print ("Pagina "+str(pagina))
-    #https://www.milanuncios.com/coches-de-segunda-mano/?fromSearch=1&desde=1000&hasta=2500&demanda=n&anod=2006&anoh=2017
-    #url = "https://www.milanuncios.com/coches-de-segunda-mano-en-madrid/?fromSearch=1&demanda=n&anod=2008&anoh=2018"
     url = 'https://www.milanuncios.com/coches-de-segunda-mano/?demanda=n&anod={0}&anoh={1}desde={2}&hasta={3}'.format(fromYear, toYear, fromPrice, toPrice)
-    #url = 'https://www.milanuncios.com/coches-de-segunda-mano/'
     if pagina > 1:
         url = url+"&pagina="+str(pagina)
         
     print (url)
     
+    #Construir cabeceras para simular que hace la peticion un humano
         
-    #vamos cambiando el user-agent
-    referer = 'https://www.milanuncios.com/coches-de-segunda-mano/'
-    #headers2 = {'User-Agent': getUserAgent(),
+    #vamos cambiando el user-agent 
+    ##codigo comentado, se deja por si se quiere utilizar en un futuro
+    ##headers = {'User-Agent': getUserAgent(),
+
+    #establecemos el user agent
     user_agent = 'Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:66.0) Gecko/20100101 Firefox/66.0'
-    #Cabeceras.
-    #Con firefox developer edition nos conectamos a la página y obtenemos una cookie que pegamos aqui
+
+    #Con firefox developer edition nos conectamos a la página
+    #y obtenemos una cookie que pegamos aqui
+    referer = 'https://www.milanuncios.com/coches-de-segunda-mano/'
     headers = {'User-Agent': user_agent,
                'referer':referer,
                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",                
@@ -95,7 +99,10 @@ def getResultados(pagina, fromYear = 2006, toYear = 2016,fromPrice = 5000,toPric
     
     print (headers)
     page = requests.get(url, headers=headers)
-    print (page.text)
+
+    #Aunque vamos a devolver el contenido para su procesamiento,
+    #guardamos la respuestas obtenida por si necesitamos evaluarlas con un editor de texto
+    #así comprobamos si la respuesta ha sido correcta o si nos han baneado
     try:
         fichRespuesta = 'respuesta-'+str(pagina)+'.html'
         file = open(fichRespuesta, "wb+")
@@ -115,11 +122,12 @@ def guardar_resultados(lista):
     cabeceras = ['Coche','Link', 'Precio', 'Año', 'Kms', 'Combustible', 'Potencia', 'Puertas', 'Cambio', 'Localizacion']
     dataset.columns = cabeceras
     dataset.to_csv(nombreFichero, index = False)    
-    
-from random import randint
-from time import sleep
+   
 
-#obtenemos los resultados de las 5 primeras paginas 
+#obtenemos el fichero robots para evaluarlo
+getFicheroRobots()
+
+#obtenemos los resultados de las paginas que nos han indicado por parametro
 listaCoches=[]
 for i in range (paginaDesde,paginaHasta+1): 
     pagina = getResultados(i, fromYear, toYear, fromPrice, toPrice)
@@ -151,12 +159,12 @@ for i in range (paginaDesde,paginaHasta+1):
             except AttributeError:
                 #algun elemento es nulo, seguimos avanzando
                 pass
-    #dormimos un numero aleatorio de segundos entre 5 y 10 para prevenir que nos baneen    
+    #dormimos un numero aleatorio de segundos entre 20 y 120 segundos para prevenir que nos baneen    
     dormir =  randint(20,120)   
-    print ('Durmiendo '+str(dormir))
+    print ('Durmiendo: '+str(dormir))
     sleep(dormir)
  
-print ("Encontrados: "+str(len(listaCoches)))
+print ("Numero de registros encontrados: "+str(len(listaCoches)))
 #for i in range(len(listaCoches)):
 #    print(listaCoches[i])
 if len(listaCoches)> 0:
